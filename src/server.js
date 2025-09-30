@@ -2,22 +2,25 @@ const express = require('express');
 const cors = require('cors');
 const pinoHttp = require('pino-http');
 
-const { getAllContactsController, getContactByIdController } = require('./controllers/contacts');
+const contactsRouter = require('./routers/contacts');
+const { errorHandler } = require('./middlewares/errorHandler');
+const { notFoundHandler } = require('./middlewares/notFoundHandler');
 
 function setupServer() {
   const app = express();
 
   app.use(cors());
   app.use(pinoHttp());
+  app.use(express.json());
 
-  // Routes
-  app.get('/contacts', getAllContactsController);
-  app.get('/contacts/:contactId', getContactByIdController);
+  // (Opsiyonel) Basit health/info
+  app.get('/', (_req, res) => res.json({ ok: true, routes: ['/contacts', '/contacts/:contactId'] }));
 
-  // 404 - tanımsız rotalar
-  app.use((req, res) => {
-    res.status(404).json({ message: 'Not found' });
-  });
+  app.use('/contacts', contactsRouter);
+
+  // 404 ve hata yakalayıcılar
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }
