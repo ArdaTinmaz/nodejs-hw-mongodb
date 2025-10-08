@@ -7,17 +7,51 @@ const {
   deleteContactService,
 } = require('../services/contacts');
 
-// GET /contacts
-async function getAllContactsController(_req, res) {
-  const contacts = await getAllContactsService();
+// ✅ GET /contacts (with pagination, sorting, filtering)
+async function getAllContactsController(req, res) {
+  const {
+    page = 1,
+    perPage = 10,
+    sortBy = 'name',
+    sortOrder = 'asc',
+    isFavourite,
+    type,
+  } = req.query;
+
+  // filtreleme koşulu
+  const filter = {};
+  if (isFavourite !== undefined) filter.isFavourite = isFavourite === 'true';
+  if (type) filter.contactType = type;
+
+  const skip = (page - 1) * perPage;
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+  // servis katmanında find/findAll logic varsa parametreleri oraya gönder
+  const [contacts, totalItems] = await getAllContactsService({
+    filter,
+    skip,
+    limit: Number(perPage),
+    sort,
+  });
+
+  const totalPages = Math.ceil(totalItems / perPage);
+
   return res.status(200).json({
     status: 200,
     message: 'Successfully found contacts!',
-    data: contacts,
+    data: {
+      data: contacts,
+      page: Number(page),
+      perPage: Number(perPage),
+      totalItems,
+      totalPages,
+      hasPreviousPage: page > 1,
+      hasNextPage: page < totalPages,
+    },
   });
 }
 
-// GET /contacts/:contactId
+// ✅ GET /contacts/:contactId
 async function getContactByIdController(req, res) {
   const { contactId } = req.params;
   const contact = await getContactByIdService(contactId);
@@ -29,12 +63,8 @@ async function getContactByIdController(req, res) {
   });
 }
 
-// POST /contacts
+// ✅ POST /contacts
 async function createContactController(req, res) {
-  const { name, phoneNumber, contactType } = req.body || {};
-  if (!name || !phoneNumber || !contactType) {
-    throw createError(400, 'name, phoneNumber and contactType are required');
-  }
   const created = await createContactService(req.body);
   return res.status(201).json({
     status: 201,
@@ -43,7 +73,7 @@ async function createContactController(req, res) {
   });
 }
 
-// PATCH /contacts/:contactId
+// ✅ PATCH /contacts/:contactId
 async function patchContactController(req, res) {
   const { contactId } = req.params;
   const updated = await patchContactService(contactId, req.body || {});
@@ -55,7 +85,7 @@ async function patchContactController(req, res) {
   });
 }
 
-// DELETE /contacts/:contactId
+// ✅ DELETE /contacts/:contactId
 async function deleteContactController(req, res) {
   const { contactId } = req.params;
   const deleted = await deleteContactService(contactId);
