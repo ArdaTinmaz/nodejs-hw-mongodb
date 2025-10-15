@@ -9,8 +9,12 @@ const {
 const { validateBody } = require('../middlewares/validateBody');
 const { isValidId } = require('../middlewares/isValidId');
 const { createContactSchema, updateContactSchema } = require('../validation/contactSchemas');
+const { authenticate } = require('../middlewares/authenticate'); 
 
 const router = express.Router();
+
+
+router.use(authenticate);
 
 router.get('/', getAllContactsController);
 router.get('/:contactId', isValidId, getContactByIdController);

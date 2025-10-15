@@ -5,6 +5,9 @@ const pinoHttp = require('pino-http');
 const contactsRouter = require('./routers/contacts');
 const { errorHandler } = require('./middlewares/errorHandler');
 const { notFoundHandler } = require('./middlewares/notFoundHandler');
+const authRouter = require('./routers/auth')
+app.use('/auth', authRouter);
+
 
 function setupServer() {
   const app = express();

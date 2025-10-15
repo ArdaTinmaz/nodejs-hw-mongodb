@@ -1,8 +1,7 @@
 const { Contact } = require('../db/models/contact');
 
-// ✅ GET ALL (with pagination, sorting, filtering)
+
 async function getAllContactsService({ filter = {}, skip = 0, limit = 10, sort = {} }) {
-  // Promise.all: aynı anda hem listeyi hem toplam sayıyı çeker
   const [contacts, totalItems] = await Promise.all([
     Contact.find(filter).sort(sort).skip(skip).limit(limit).lean(),
     Contact.countDocuments(filter),
@@ -11,22 +10,24 @@ async function getAllContactsService({ filter = {}, skip = 0, limit = 10, sort =
   return [contacts, totalItems];
 }
 
-// Diğer servis fonksiyonların aynı kalıyor 👇
 
-async function getContactByIdService(contactId) {
-  return Contact.findById(contactId).lean();
+async function getContactByIdService(contactId, userId) {
+  return Contact.findOne({ _id: contactId, userId }).lean();
 }
+
 
 async function createContactService(payload) {
   return Contact.create(payload);
 }
 
-async function patchContactService(contactId, payload) {
-  return Contact.findByIdAndUpdate(contactId, payload, { new: true, lean: true });
+
+async function patchContactService(contactId, payload, userId) {
+  return Contact.findOneAndUpdate({ _id: contactId, userId }, payload, { new: true, lean: true });
 }
 
-async function deleteContactService(contactId) {
-  return Contact.findByIdAndDelete(contactId).lean();
+
+async function deleteContactService(contactId, userId) {
+  return Contact.findOneAndDelete({ _id: contactId, userId }).lean();
 }
 
 module.exports = {
