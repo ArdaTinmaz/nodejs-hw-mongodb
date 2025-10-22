@@ -1,13 +1,13 @@
 const createError = require('http-errors');
-const jwt = require('jsonwebtoken');
-const SibApiV3Sdk = require('@getbrevo/brevo');
-const { User } = require('../db/models/user');
 const {
   registerUser,
   loginUser,
   refreshSession,
   logoutSession,
 } = require('../services/auth');
+const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
+const { User } = require('../db/models/user');
 
 const cookieName = process.env.COOKIE_NAME || 'refreshToken';
 
@@ -18,9 +18,7 @@ const cookieOpts = {
   path: '/',
 };
 
-/* ==========================================================
-   🔹 1. Kullanıcı Kaydı
-========================================================== */
+// 🔹 Kullanıcı Kaydı
 async function registerController(req, res, next) {
   try {
     const user = await registerUser(req.body);
@@ -34,18 +32,18 @@ async function registerController(req, res, next) {
   }
 }
 
-/* ==========================================================
-   🔹 2. Giriş Yapma
-========================================================== */
+// 🔹 Giriş Yapma
 async function loginController(req, res, next) {
   try {
     const result = await loginUser(req.body);
 
+    // Refresh token cookie'ye kaydedilir
     res.cookie(cookieName, result.refreshToken, {
       ...cookieOpts,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 gün
     });
 
+    // Access token response body'de döner
     res.status(200).json({
       status: 200,
       message: 'Successfully logged in an user!',
@@ -56,9 +54,7 @@ async function loginController(req, res, next) {
   }
 }
 
-/* ==========================================================
-   🔹 3. Refresh (Oturum Yenileme)
-========================================================== */
+// 🔹 Refresh (Oturum Yenileme)
 async function refreshController(req, res, next) {
   try {
     const result = await refreshSession(req.cookies[cookieName]);
@@ -78,9 +74,7 @@ async function refreshController(req, res, next) {
   }
 }
 
-/* ==========================================================
-   🔹 4. Logout (Çıkış)
-========================================================== */
+// 🔹 Logout (Çıkış)
 async function logoutController(req, res, next) {
   try {
     await logoutSession(req.cookies[cookieName]);
@@ -91,9 +85,7 @@ async function logoutController(req, res, next) {
   }
 }
 
-/* ==========================================================
-   🔹 5. Şifre Sıfırlama E-Postası (Brevo API ile)
-========================================================== */
+// 🔹 Şifre Sıfırlama E-Postası Gönderimi
 async function sendResetEmailController(req, res, next) {
   try {
     const { email } = req.body;
@@ -102,30 +94,32 @@ async function sendResetEmailController(req, res, next) {
     const user = await User.findOne({ email });
     if (!user) throw createError(404, 'User not found!');
 
-    // Token oluştur (5 dakika geçerli)
     const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '5m' });
     const resetLink = `${process.env.APP_DOMAIN}/reset-password?token=${token}`;
 
-    // Brevo API ayarları
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-    apiInstance.setApiKey(
-      SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey,
-      process.env.BREVO_API_KEY
-    );
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    });
 
-    const sendSmtpEmail = {
-      sender: { email: process.env.SMTP_FROM, name: 'GOIT App' },
-      to: [{ email }],
+    const mailOptions = {
+      from: process.env.SMTP_FROM,
+      to: email,
       subject: 'Password Reset Request',
-      htmlContent: `
+      html: `
         <p>Merhaba ${user.name || 'kullanıcı'},</p>
-        <p>Şifreni sıfırlamak için aşağıdaki bağlantıya tıkla (5 dakika geçerli):</p>
+        <p>Şifreni sıfırlamak için aşağıdaki bağlantıya tıkla:</p>
         <a href="${resetLink}">${resetLink}</a>
+        <p>Bu bağlantı 5 dakika içinde geçersiz olacaktır.</p>
       `,
     };
 
-    // Mail gönderimi
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    await transporter.sendMail(mailOptions);
 
     res.status(200).json({
       status: 200,
@@ -133,8 +127,42 @@ async function sendResetEmailController(req, res, next) {
       data: {},
     });
   } catch (error) {
-    console.error('Brevo mail hatası:', error);
+    console.error('Email gönderim hatası:', error);
     next(createError(500, 'Failed to send the email, please try again later.'));
+  }
+}
+
+// 🔹 Şifre Sıfırlama İşlemi
+async function resetPasswordController(req, res, next) {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) throw createError(400, 'Token and new password are required');
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      throw createError(401, 'Token is expired or invalid.');
+    }
+
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) throw createError(404, 'User not found!');
+
+    // Yeni şifreyi kaydet
+    user.password = password;
+    await user.save();
+
+    // Mevcut oturumu sil (refresh token sıfırlama)
+    await logoutSession(user._id);
+
+    res.status(200).json({
+      status: 200,
+      message: 'Password has been successfully reset.',
+      data: {},
+    });
+  } catch (error) {
+    next(error);
   }
 }
 
@@ -144,4 +172,5 @@ module.exports = {
   refreshController,
   logoutController,
   sendResetEmailController,
+  resetPasswordController,
 };

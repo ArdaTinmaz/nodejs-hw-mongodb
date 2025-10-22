@@ -6,8 +6,10 @@ const {
   patchContactService,
   deleteContactService,
 } = require('../services/contacts');
+const cloudinary = require('../utils/cloudinary');
+const fs = require('fs/promises');
 
-// ✅ GET /contacts (pagination + sorting + filtering + user scope)
+// ✅ GET /contacts (with pagination, sorting, filtering)
 async function getAllContactsController(req, res) {
   const {
     page = 1,
@@ -18,9 +20,7 @@ async function getAllContactsController(req, res) {
     type,
   } = req.query;
 
-  // 👇 sadece giriş yapan kullanıcının verilerini al
-  const filter = { userId: req.user._id };
-
+  const filter = {};
   if (isFavourite !== undefined) filter.isFavourite = isFavourite === 'true';
   if (type) filter.contactType = type;
 
@@ -54,10 +54,7 @@ async function getAllContactsController(req, res) {
 // ✅ GET /contacts/:contactId
 async function getContactByIdController(req, res) {
   const { contactId } = req.params;
-
-  // 👇 sadece kendi contact’larını çek
-  const contact = await getContactByIdService(contactId, req.user._id);
-
+  const contact = await getContactByIdService(contactId);
   if (!contact) throw createError(404, 'Contact not found');
   return res.status(200).json({
     status: 200,
@@ -66,12 +63,22 @@ async function getContactByIdController(req, res) {
   });
 }
 
-// ✅ POST /contacts
+// ✅ POST /contacts (photo destekli)
 async function createContactController(req, res) {
-  // 👇 contact oluşturulurken userId otomatik eklenecek
+  let photoUrl = null;
+
+  if (req.file) {
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'contacts',
+    });
+    photoUrl = uploadResult.secure_url;
+    await fs.unlink(req.file.path);
+  }
+
   const created = await createContactService({
     ...req.body,
     userId: req.user._id,
+    photo: photoUrl,
   });
 
   return res.status(201).json({
@@ -81,12 +88,23 @@ async function createContactController(req, res) {
   });
 }
 
-// ✅ PATCH /contacts/:contactId
+// ✅ PATCH /contacts/:contactId (photo destekli)
 async function patchContactController(req, res) {
   const { contactId } = req.params;
+  let photoUrl = null;
 
-  // 👇 sadece kendi contact’ını güncelleyebilir
-  const updated = await patchContactService(contactId, req.body || {}, req.user._id);
+  if (req.file) {
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'contacts',
+    });
+    photoUrl = uploadResult.secure_url;
+    await fs.unlink(req.file.path);
+  }
+
+  const updated = await patchContactService(contactId, {
+    ...req.body,
+    ...(photoUrl && { photo: photoUrl }),
+  });
 
   if (!updated) throw createError(404, 'Contact not found');
   return res.status(200).json({
@@ -99,10 +117,7 @@ async function patchContactController(req, res) {
 // ✅ DELETE /contacts/:contactId
 async function deleteContactController(req, res) {
   const { contactId } = req.params;
-
-  // 👇 sadece kendi contact’ını silebilir
-  const deleted = await deleteContactService(contactId, req.user._id);
-
+  const deleted = await deleteContactService(contactId);
   if (!deleted) throw createError(404, 'Contact not found');
   return res.status(204).end();
 }

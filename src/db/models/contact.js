@@ -2,20 +2,47 @@ const { Schema, model } = require('mongoose');
 
 const contactSchema = new Schema(
   {
-    name: { type: String, required: true, trim: true },
-    phoneNumber: { type: String, required: true, trim: true },
-    email: { type: String, default: null, trim: true },
-    isFavourite: { type: Boolean, default: false },
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+    },
+    phoneNumber: {
+      type: String,
+      required: [true, 'Phone number is required'],
+      match: [/^\+?\d{7,15}$/, 'Invalid phone number format'],
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    isFavourite: {
+      type: Boolean,
+      default: false,
+    },
     contactType: {
       type: String,
-      enum: ['work', 'home', 'personal'],
-      required: true,
+      enum: ['home', 'work', 'personal'],
       default: 'personal',
     },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required'],
+    },
+    // 🔹 Cloudinary fotoğraf URL’si burada tutulacak
+    photo: {
+      type: String,
+      default: null,
+    },
   },
-  { timestamps: true, versionKey: false },
+  {
+    timestamps: true, // createdAt ve updatedAt otomatik eklenir
+    versionKey: false,
+  }
 );
 
-const Contact = model('Contact', contactSchema); 
+const Contact = model('Contact', contactSchema);
+
 module.exports = { Contact };
