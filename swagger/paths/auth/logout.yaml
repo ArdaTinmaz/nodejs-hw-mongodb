@@ -1,0 +1,12 @@
+tags:
+  - Auth
+summary: Kullanıcı çıkışı yapar
+operationId: logoutUser
+description: Mevcut oturumu sonlandırır ve refresh token’ı siler.
+responses:
+  '204':
+    description: Başarılı çıkış
+  '401':
+    description: Yetkisiz
+security:
+  - bearerAuth: []

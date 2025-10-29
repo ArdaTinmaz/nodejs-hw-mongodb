@@ -1,0 +1,29 @@
+tags:
+  - Auth
+summary: Kullanıcının şifresini sıfırlar
+operationId: resetPassword
+description: |
+  Token geçerliyse, kullanıcı yeni bir şifre belirler.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - token
+          - password
+        properties:
+          token:
+            type: string
+            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          password:
+            type: string
+            example: "newpassword123"
+responses:
+  '200':
+    description: Şifre başarıyla sıfırlandı
+  '401':
+    description: Token geçersiz veya süresi dolmuş
+  '404':
+    description: Kullanıcı bulunamadı

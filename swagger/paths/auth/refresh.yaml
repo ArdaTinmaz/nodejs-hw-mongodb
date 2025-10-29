@@ -1,0 +1,12 @@
+tags:
+  - Auth
+summary: Access token yeniler
+operationId: refreshSession
+description: Kullanıcının mevcut refresh token’ı ile yeni bir access token oluşturur.
+responses:
+  '200':
+    description: Başarılı
+  '401':
+    description: Yetkisiz
+security:
+  - bearerAuth: []

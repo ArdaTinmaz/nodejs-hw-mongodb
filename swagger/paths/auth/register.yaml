@@ -1,0 +1,28 @@
+tags:
+  - Auth
+summary: Yeni kullanıcı kaydı oluşturur
+operationId: registerUser
+description: |
+  Bu uç nokta yeni bir kullanıcı kaydı oluşturur.
+  Kullanıcı e-posta ve şifresini girer, sistem yeni bir hesap oluşturur.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+          - password
+        properties:
+          email:
+            type: string
+            example: arda@example.com
+          password:
+            type: string
+            example: "123456"
+responses:
+  '201':
+    description: Kullanıcı başarıyla oluşturuldu
+  '400':
+    description: Eksik veya geçersiz veri

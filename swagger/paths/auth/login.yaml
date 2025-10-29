@@ -1,0 +1,28 @@
+tags:
+  - Auth
+summary: Kullanıcı girişi yapar
+operationId: loginUser
+description: |
+  Kullanıcı e-posta ve şifre ile giriş yapar. 
+  Başarılı olursa access token döner.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+          - password
+        properties:
+          email:
+            type: string
+            example: arda@example.com
+          password:
+            type: string
+            example: "123456"
+responses:
+  '200':
+    description: Başarılı giriş
+  '401':
+    description: Geçersiz kimlik bilgileri

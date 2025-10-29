@@ -1,0 +1,24 @@
+tags:
+  - Auth
+summary: Şifre sıfırlama e-postası gönderir
+operationId: sendResetEmail
+description: |
+  Kullanıcı e-posta adresini gönderir, sistem 5 dakikalık bir token içeren
+  şifre sıfırlama bağlantısını e-posta ile yollar.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+        properties:
+          email:
+            type: string
+            example: arda@example.com
+responses:
+  '200':
+    description: E-posta başarıyla gönderildi
+  '404':
+    description: Kullanıcı bulunamadı
